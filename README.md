@@ -2,4 +2,4 @@
 
 当前项目为中转
 
-真是项目地址： https://github.com/jackc/pgx.git
+真实项目地址： https://github.com/jackc/pgx.git
