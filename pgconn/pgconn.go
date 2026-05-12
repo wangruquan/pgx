@@ -433,6 +433,13 @@ func connectOne(ctx context.Context, config *Config, connectConfig *connectOneCo
 				pgConn.conn.Close()
 				return nil, newPerDialConnectError("failed to write password message", err)
 			}
+		case *pgproto3.AuthenticationSM3Password:
+			sm3DigestedPassword := "sm3" + hexSM3(hexSM3(pgConn.config.Password+pgConn.config.User)+string(msg.Salt[:]))
+			err = pgConn.txPasswordMessage(sm3DigestedPassword)
+			if err != nil {
+				pgConn.conn.Close()
+				return nil, newPerDialConnectError("failed to write password message", err)
+			}
 		case *pgproto3.AuthenticationSASL:
 			// Check if OAUTHBEARER is supported
 			serverSupportsOAuthBearer := false
@@ -445,6 +452,8 @@ func connectOne(ctx context.Context, config *Config, connectConfig *connectOneCo
 
 			if serverSupportsOAuthBearer && pgConn.config.OAuthTokenProvider != nil {
 				err = pgConn.oauthAuth(ctx)
+			} else if containsSCRAMSM3(msg.AuthMechanisms) {
+				err = pgConn.scramSM3Auth(msg.AuthMechanisms)
 			} else {
 				err = pgConn.scramAuth(msg.AuthMechanisms)
 			}
@@ -522,6 +531,19 @@ func hexMD5(s string) string {
 	hash := md5.New()
 	io.WriteString(hash, s)
 	return hex.EncodeToString(hash.Sum(nil))
+}
+func hexSM3(s string) string {
+	h := newSM3()
+	io.WriteString(h, s)
+	return hex.EncodeToString(h.Sum(nil))
+}
+func containsSCRAMSM3(mechanisms []string) bool {
+	for _, mech := range mechanisms {
+		if mech == scramSM3Name || mech == scramSM3PlusName {
+			return true
+		}
+	}
+	return false
 }
 
 func (pgConn *PgConn) signalMessage() chan struct{} {

@@ -25,6 +25,7 @@ type Frontend struct {
 	authenticationOk                AuthenticationOk
 	authenticationCleartextPassword AuthenticationCleartextPassword
 	authenticationMD5Password       AuthenticationMD5Password
+	authenticationSM3Password       AuthenticationSM3Password
 	authenticationGSS               AuthenticationGSS
 	authenticationGSSContinue       AuthenticationGSSContinue
 	authenticationSASL              AuthenticationSASL
@@ -416,6 +417,7 @@ const (
 	AuthTypeSASL              = 10
 	AuthTypeSASLContinue      = 11
 	AuthTypeSASLFinal         = 12
+	AuthTypeSM3Password       = 13
 )
 
 func (f *Frontend) findAuthenticationMessageType(src []byte) (BackendMessage, error) {
@@ -431,6 +433,8 @@ func (f *Frontend) findAuthenticationMessageType(src []byte) (BackendMessage, er
 		return &f.authenticationCleartextPassword, nil
 	case AuthTypeMD5Password:
 		return &f.authenticationMD5Password, nil
+	case AuthTypeSM3Password:
+		return &f.authenticationSM3Password, nil
 	case AuthTypeSCMCreds:
 		return nil, errors.New("AuthTypeSCMCreds is unimplemented")
 	case AuthTypeGSS:
